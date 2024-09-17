@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:13  # Use the official PostgreSQL image
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/  # Persistent data storage
+    environment:
+      POSTGRES_DB: onboarding_db      # Name of your PostgreSQL database
+      POSTGRES_USER: username    # PostgreSQL user
+      POSTGRES_PASSWORD: password  # PostgreSQL password
+    ports:
+      - "5432:5432"  # Expose PostgreSQL to the host machine
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000  # Run the Django development server
+    volumes:
+      - .:/code  # Mount the current directory inside the container
+    ports:
+      - "8000:8000"  # Expose the Django app on port 8000
+    depends_on:
+      - db  # Ensure the database service is started before the web service
+    environment:
+      DB_NAME: onboarding_db
+      DB_USER: username
+      DB_PASSWORD: password
+      DB_HOST: db  # Host is the name of the PostgreSQL service in this file (db)
+      DB_PORT: 5432
+
+volumes:
+  postgres_data:  # Named volume for persistent PostgreSQL storage
