@@ -1,21 +1,25 @@
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Table, Row, Header
+from .models import Table, Row, Header, User
 
-def LoginUser(request):
+def get_or_create_user(request):
+    """
+    Ideally want to go through auth.contrib for proper authentication and authorization
+    """
     name = request.body.get("name", None)
     email = request.body.get("email", None)
 
-    return Response()
+    if not (name and email):
+        return Response(data={"error": "Please provide a name or email"}, status=status.HTTP_400_BAD_REQUEST)
 
+    user = User.objects.create(name=name, email=email)
 
-def index(request):
-    return Response()
+    return Response(data={"data": {"user_id": user.id}})
 
 
 def get_tables(request):
 
-    tables_qs = Table.objects.filter(owned_by_id=request.user.id)
+    tables_qs = Table.objects.filter(owner_id=request.user.id)
 
     return Response(data=tables_qs)
 
@@ -27,7 +31,7 @@ def get_headers(request):
     if not user_id:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    headers_qs = Header.objects.prefetch_related("header_tables").filter(header_tables__owned_by_id=user_id)
+    headers_qs = Header.objects.prefetch_related("header_tables").filter(header_tables__owner_id=user_id)
 
     return Response(data=headers_qs)
 

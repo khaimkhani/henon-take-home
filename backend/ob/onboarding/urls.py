@@ -3,5 +3,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("user/", views.index, name="index"),
+    path("get_or_create_user/", views.get_or_create_user, name="get_or_create_user"),
 ]
