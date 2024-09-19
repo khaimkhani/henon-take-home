@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+
 
 const ContactForm = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
+  const navigate = useNavigate()
+
   const mutation = useMutation({
-    onSuccess: () => { setName(''); setEmail(''); }
+    onSuccess: (data) => {
+      setName('');
+      setEmail('');
+      navigate(`/dashboard/${data.user_id}`)
+    }
   })
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("mutation")
     mutation.mutate({ endpoint: 'get_or_create_user', data: { name, email } })
   };
 

@@ -11,32 +11,8 @@ import {
 import Home from './Home.js';
 import DocumentDashboard from './Dashboard.js';
 import TableView from './TableView.js';
+import { defaultQueryFn, defaultMutationFn } from './utils.js'
 
-
-const defaultQueryFn = async ({ queryKey }) => {
-
-  const res = await fetch(`http://localhost:8000/api/${queryKey[0]}`)
-
-  if (!res.ok) {
-    throw new Error(`Request failed with status ${res.status}`)
-  }
-  return res.json()
-}
-
-const defaultMutationFn = async ({ endpoint, data }) => {
-
-  const res = await fetch(`http://localhost:8000/api/${endpoint}`, {
-    method: 'POST', headers: {
-      'Content-Type': 'application/json'
-    }, body: data
-  })
-
-  if (!res.ok) {
-    throw new Error(`Request failed with status ${res.status}`)
-  }
-  return res.json()
-
-}
 
 const queryClient = new QueryClient(
   {
@@ -57,7 +33,7 @@ function App() {
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/table' element={<TableView />} />
-          <Route path='/dashboard' element={<DocumentDashboard />} />
+          <Route path='/dashboard/:userid' element={<DocumentDashboard />} />
         </Routes>
       </div>
     </QueryClientProvider>

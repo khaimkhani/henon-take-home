@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { withParams } from './utils.js';
 
 const DocumentDashboard = () => {
+  const { userid } = useParams()
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [files, setFiles] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([
-    { id: 1, name: 'document1.pdf', size: '2.5 MB', type: 'application/pdf' },
-    { id: 2, name: 'image.jpg', size: '1.8 MB', type: 'image/jpeg' },
-    { id: 3, name: 'spreadsheet.xlsx', size: '3.2 MB', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-  ]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
+
+  const query = useQuery({ queryKey: [withParams('tables', { userid: userid })], enabled: !!userid })
+  useEffect(() => console.log(userid), [])
 
   const handleFileChange = (event) => {
     setFiles([...event.target.files]);
