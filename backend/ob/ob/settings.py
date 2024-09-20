@@ -22,25 +22,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-j54d1nzwi(pn+=c0vz7r+^3_6916ly46c7(r!4op4kax04s(pg'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+APPEND_SLASH = True
 ALLOWED_HOSTS = ['*']
+
+STATIC_URL = "static/"
+# STATICFILES_DIRS = (os.path.join(BASE_DIR,'media/assets/'),)
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'onboarding',
+    'onboarding.apps.OnboardingConfig',
+    # 'onboarding',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +59,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+CORS_ALLOWED_ORIGINS = ['http://localhost:3000']
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+]
 ROOT_URLCONF = 'ob.urls'
 
 TEMPLATES = [
