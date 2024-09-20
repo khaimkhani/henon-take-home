@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 
-const ContactForm = () => {
+const Home = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
@@ -14,6 +14,8 @@ const ContactForm = () => {
       setName('');
       setEmail('');
       navigate(`/dashboard/${data.user_id}`)
+      // set localstorage user
+      localStorage.setItem('userID', data.user_id)
     }
   })
 
@@ -67,10 +69,5 @@ const ContactForm = () => {
 };
 
 
-// change this
-export default function Home() {
-
-  return <div><ContactForm /></div>
-
-}
+export default Home;
 

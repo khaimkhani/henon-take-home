@@ -32,7 +32,7 @@ function App() {
       <div className="App">
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route path='/table' element={<TableView />} />
+          <Route path='/table/:tableid' element={<TableView />} />
           <Route path='/dashboard/:userid' element={<DocumentDashboard />} />
         </Routes>
       </div>

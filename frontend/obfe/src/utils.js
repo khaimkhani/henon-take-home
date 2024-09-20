@@ -1,17 +1,29 @@
+
+export const BASE_URL = "http://localhost:8001"
+
 export const withParams = (queryKey, params) => {
   var endpoint = queryKey + '?'
   Object.entries(params).forEach(kv => endpoint += `${kv[0]}=${kv[1]}&`)
-  console.log(endpoint)
   return endpoint
 }
 
 export const defaultQueryFn = async (data) => {
 
   const { queryKey } = data
-  const url = `http://localhost:8000/api/${queryKey[0]}`
-  console.log(url)
+  let url = `${BASE_URL}/api/${queryKey[0]}`
 
-  const res = await fetch(url)
+  if (!!data.pageParam) {
+    url += url.endsWith('&') ? `page=${data.pageParam}` : `?page=${data.pageParam}`
+  }
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': localStorage.getItem('userID')
+    }
+  })
+
+  console.log(localStorage.getItem('userID'))
 
   if (!res.ok) {
     throw new Error(`Request failed with status ${res.status}`)
@@ -19,12 +31,14 @@ export const defaultQueryFn = async (data) => {
   return res.json()
 }
 
-export const defaultMutationFn = async ({ endpoint, data }) => {
-
-  const res = await fetch(`http://localhost:8000/api/${endpoint}/`, {
+export const defaultMutationFn = async ({ endpoint, data, contentType = 'application/json' }) => {
+  const stringify = contentType === 'application/json'
+  const res = await fetch(`${BASE_URL}/api/${endpoint}/`, {
     method: 'POST', headers: {
-      'Content-Type': 'application/json',
-    }, body: JSON.stringify(data)
+      'Content-Type': contentType,
+      'Authorization': localStorage.getItem('userID')
+    },
+    body: stringify ? JSON.stringify(data) : data
   })
 
   if (!res.ok) {
