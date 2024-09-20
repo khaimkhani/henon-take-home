@@ -71,15 +71,7 @@ def get_headers(request):
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
 
-    user_id = request.body.get("user", None)
-
     headers_qs = Header.objects.filter(owned_by_id=user_id)
-
-    if not user_id:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    # should change this so that headers is not only dependant on tables
-    headers_qs = Header.objects.filter(owner_id=user_id)
 
     return Response(HeaderSerializer(headers_qs, many=True).data)
 

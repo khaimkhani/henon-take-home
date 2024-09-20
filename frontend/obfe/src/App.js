@@ -33,7 +33,7 @@ function App() {
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/table/:tableid' element={<TableView />} />
-          <Route path='/dashboard/:userid' element={<DocumentDashboard />} />
+          <Route path='/dashboard' element={<DocumentDashboard />} />
         </Routes>
       </div>
     </QueryClientProvider>

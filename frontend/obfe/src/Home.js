@@ -13,7 +13,7 @@ const Home = () => {
     onSuccess: (data) => {
       setName('');
       setEmail('');
-      navigate(`/dashboard/${data.user_id}`)
+      navigate(`/dashboard`)
       // set localstorage user
       localStorage.setItem('userID', data.user_id)
     }
