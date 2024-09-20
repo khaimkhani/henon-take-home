@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { withParams, BASE_URL } from './utils.js';
 
+
+const HEADER_TYPES = {
+  string: "STRING",
+  int: "INT",
+  float: "FLOAT",
+  date: "DATE",
+}
+
 const DocumentDashboard = () => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [files, setFiles] = useState([]);
@@ -10,17 +18,19 @@ const DocumentDashboard = () => {
 
   const [columnSettings, setColumnSettings] = useState([
     // prefill these when upload
-    { name: null, type: null },
-    { name: null, type: null },
-    { name: null, type: null },
-    { name: null, type: null },
+    // default should be string?
+    { name: '', type: HEADER_TYPES.string },
+    { name: '', type: HEADER_TYPES.string },
+    { name: '', type: HEADER_TYPES.string },
+    { name: '', type: HEADER_TYPES.string },
   ])
 
   const tables = useQuery({ queryKey: ['tables'] })
-  const headers = useQuery({ queryKey: ['headers'] })
+  //const headers = useQuery({ queryKey: ['headers'] })
 
   const uploadFiles = useMutation({
     mutationFn: async (formdata) => {
+
       const res = await fetch(`${BASE_URL}/api/upload_files/`, {
         method: 'POST', headers: { 'Authorization': localStorage.getItem('userID') }, body: formdata
       })
@@ -40,14 +50,41 @@ const DocumentDashboard = () => {
   };
 
   const handleUpload = () => {
+    // headers validation
+    // right now it only checks if they exist
+    if (!columnSettings.every(item => !!item.name)) {
+      // set error state
+      return
+    }
+
     const fd = new FormData()
     files.forEach(file => fd.append('files[]', file))
+    columnSettings.forEach(setting => fd.append('headers[]', setting))
     uploadFiles.mutate(fd)
   };
 
   const handleDelete = (id) => {
     // remove from files
   };
+
+
+  const updateFileHeaderName = (val, colNum) => {
+    setColumnSettings(columnSettings.map((col, i) => {
+      if (i === colNum) {
+        col.name = val
+      }
+      return col
+    }))
+  }
+
+  const updateFileHeaderType = (val, colNum) => {
+    setColumnSettings(columnSettings.map((col, i) => {
+      if (i === colNum) {
+        col.type = val
+      }
+      return col
+    }))
+  }
 
   // TEMP
   const columns = []
@@ -106,15 +143,16 @@ const DocumentDashboard = () => {
                       <div key={idx} className="flex items-center space-x-2 mb-2">
                         <input
                           type="text"
-                          // value={column.name}
-                          onChange={(e) => { }}
-                          // placeholder=
+                          value={columnSettings[idx].name}
+                          onChange={(e) => updateFileHeaderName(e.target.value, idx)}
+                          placeholder={columnSettings[idx].name}
                           className="border rounded px-2 py-1 flex-grow"
                         />
                         <select
                           // get from preset
-                          // value={column.type}
-                          onChange={(e) => { }}
+                          value={columnSettings[idx].type}
+                          onChange={(e) => updateFileHeaderType(e.target.value, idx)}
+                          placeholder={columnSettings[idx].type}
                           className="border rounded px-2 py-1"
                         >
                           <option value="string">String</option>

@@ -23,8 +23,6 @@ export const defaultQueryFn = async (data) => {
     }
   })
 
-  console.log(localStorage.getItem('userID'))
-
   if (!res.ok) {
     throw new Error(`Request failed with status ${res.status}`)
   }

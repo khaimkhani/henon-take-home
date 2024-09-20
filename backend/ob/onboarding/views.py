@@ -95,7 +95,7 @@ def add_header(request):
                           type2=type2,
                           type3=type3,
                           type4=type4,
-                          owner_id=user_id
+                          owner=user_id
                           )
 
     # make nice message
