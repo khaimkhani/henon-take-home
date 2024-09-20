@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
+
 from .models import Table, Row, Header, User
 from .serializers import TableSerializer, RowSerializer, HeaderSerializer
 
@@ -29,22 +30,40 @@ def get_or_create_user(request):
 
 @api_view(['POST'])
 def upload_tables(request):
-    files = request.FILES.getlist("files[]")
-
-    if not files:
-        return Response(data={"error": "No files sent"}, status=status.HTTP_400_BAD_REQUEST)
-
     user_id = request.headers.get("Authorization", None)
 
     if not user_id:
         return Response({"error": "No user associated with this ID"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "user does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+    files = request.FILES.getlist("files[]")
+    col_names = request.POST.getlist("colNames[]")
+    col_types = request.POST.getlist("colTypes[]")
+
+    if not files:
+        return Response(data={"error": "No files sent"}, status=status.HTTP_400_BAD_REQUEST)
+
     tables = []
 
+    # all files have same header
+    header = Header.objects.get_or_create(name1=col_names[0],
+                                          name2=col_names[1],
+                                          name3=col_names[2],
+                                          name4=col_names[3],
+                                          type1=col_types[0],
+                                          type2=col_types[1],
+                                          type3=col_types[2],
+                                          type4=col_types[3],
+                                          owner=user,
+                                          )[0]
     # this includes all rows from the table
     rows = []
     for file in files:
         # TODO add header
-        table = Table(name=file.name, file=file, owned_by_id=user_id)
+        table = Table(name=file.name, file=file, header=header, owned_by_id=user_id)
         tables.append(table)
         for row in get_file_rows(file):
             col1, col2, col3, col4 = row
@@ -71,13 +90,20 @@ def get_headers(request):
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
 
-    headers_qs = Header.objects.filter(owned_by_id=user_id)
+    headers_qs = Header.objects.filter(owner_id=user_id)
 
     return Response(HeaderSerializer(headers_qs, many=True).data)
 
 @api_view(['POST'])
 def add_header(request):
     user_id = request.headers.get("Authorization", None)
+    if not user_id:
+        return Response({"error": "No user associated with this ID"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "user does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
     name1 = request.data.get("name1", None)
     name2 = request.data.get("name2", None)
     name3 = request.data.get("name3", None)
@@ -87,19 +113,21 @@ def add_header(request):
     type3 = request.data.get("type3", None)
     type4 = request.data.get("type4", None)
 
-    Header.objects.create(name1=name1,
-                          name2=name2,
-                          name3=name3,
-                          name4=name4,
-                          type1=type1,
-                          type2=type2,
-                          type3=type3,
-                          type4=type4,
-                          owner=user_id
-                          )
+    header, created = Header.objects.get_or_create(name1=name1,
+                                                   name2=name2,
+                                                   name3=name3,
+                                                   name4=name4,
+                                                   type1=type1,
+                                                   type2=type2,
+                                                   type3=type3,
+                                                   type4=type4,
+                                                   owner=user
+                                                   )
 
     # make nice message
-    return Response()
+    if not created:
+        return Response({"data": "Header already exists"})
+    return Response({"data": "Created header"})
 
 @api_view(['GET'])
 def get_rows(request):

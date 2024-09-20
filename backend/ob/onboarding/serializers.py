@@ -12,15 +12,20 @@ class RowSerializer(serializers.ModelSerializer):
         fields = ['col1', 'col2', 'col3', 'col4']
 
 class HeaderSerializer(serializers.ModelSerializer):
+    col1 = serializers.SerializerMethodField()
+    col2 = serializers.SerializerMethodField()
+    col3 = serializers.SerializerMethodField()
+    col4 = serializers.SerializerMethodField()
+
     class Meta:
         model = Header
         fields = ['col1', 'col2', 'col3', 'col4']
 
     def get_col1(self, obj):
-        return {"name1": obj.name1, "type1": obj.type1}
+        return {"name": obj.name1, "type": obj.type1}
     def get_col2(self, obj):
-        return {"name2": obj.name2, "type1": obj.type2}
+        return {"name": obj.name2, "type": obj.type2}
     def get_col3(self, obj):
-        return {"name3": obj.name3, "type3": obj.type3}
+        return {"name": obj.name3, "type": obj.type3}
     def get_col4(self, obj):
-        return {"name4": obj.name4, "type4": obj.type4}
+        return {"name": obj.name4, "type": obj.type4}

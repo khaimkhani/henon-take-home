@@ -10,6 +10,18 @@ const HEADER_TYPES = {
   date: "DATE",
 }
 
+const getPresetName = (preset) => {
+  let name = ''
+  Object.entries(preset).forEach(([key, ps], idx) => {
+    if (idx < 3) {
+      name += `${ps.name} (${ps.type}) - `
+    } else {
+      name += `${ps.name} (${ps.type})`
+    }
+  })
+  return name
+}
+
 const DocumentDashboard = () => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [files, setFiles] = useState([]);
@@ -25,14 +37,17 @@ const DocumentDashboard = () => {
     { name: '', type: HEADER_TYPES.string },
   ])
 
-  const tables = useQuery({ queryKey: ['tables'] })
-  //const headers = useQuery({ queryKey: ['headers'] })
+  const [selectedPreset, setSelectedPreset] = useState()
+  const [selectedPresetName, setSelectedPresetName] = useState()
+
+  const tables = useQuery({ queryKey: ['tables'], enabled: !!userID })
+  const headers = useQuery({ queryKey: ['headers'], enabled: !!userID })
 
   const uploadFiles = useMutation({
     mutationFn: async (formdata) => {
 
       const res = await fetch(`${BASE_URL}/api/upload_files/`, {
-        method: 'POST', headers: { 'Authorization': localStorage.getItem('userID') }, body: formdata
+        method: 'POST', headers: { 'Authorization': userID }, body: formdata
       })
       if (res.ok) {
         throw new Error('Failed to send files for upload')
@@ -59,7 +74,10 @@ const DocumentDashboard = () => {
 
     const fd = new FormData()
     files.forEach(file => fd.append('files[]', file))
-    columnSettings.forEach(setting => fd.append('headers[]', setting))
+    columnSettings.forEach(setting => {
+      fd.append('colNames[]', setting.name)
+      fd.append('colTypes[]', setting.type)
+    })
     uploadFiles.mutate(fd)
   };
 
@@ -86,11 +104,14 @@ const DocumentDashboard = () => {
     }))
   }
 
-  // TEMP
-  const columns = []
-  const selectedPreset = null
-  const presets = []
-  const newPresetName = "temp"
+  const handlePresetSelection = (preset) => {
+    setColumnSettings(Object.entries(preset).map(([_, ps]) => ps))
+    console.log(getPresetName(preset))
+    setSelectedPresetName(getPresetName(preset))
+  }
+
+  const presets = headers?.data || []
+  console.log(selectedPresetName)
 
 
   return (
@@ -129,7 +150,6 @@ const DocumentDashboard = () => {
                       <div className="flex items-center justify-between cursor-pointer">
                         <div className="flex items-center space-x-2" onClick={() => { }}>
                           <span>{file.name}</span>
-                          {file.isOpen ? <p>Close</p> : <p>Open</p>}
                         </div>
                         <button onClick={() => { }} className="text-red-500 hover:text-red-700">
                           <p>X</p>
@@ -163,37 +183,20 @@ const DocumentDashboard = () => {
                     ))}
                   </div>
                   <div className="mt-4">
-                    <h5 className="font-medium mb-1">Apply Preset:</h5>
                     <select
-                      value={selectedPreset ? selectedPreset.name : ''}
+                      value={selectedPresetName ? selectedPresetName : ''}
                       onChange={(e) => {
-                        const preset = presets.find(p => p.name === e.target.value);
-                        // if (preset) applyPreset(preset);
+                        handlePresetSelection(presets[e.target.value])
                       }}
                       className="border rounded px-2 py-1 w-full"
                     >
                       <option value="">Select a preset</option>
                       {presets.map((preset, index) => (
-                        <option key={index} value={preset.name}>
-                          {preset.name}
+                        <option key={index} value={index}>
+                          {getPresetName(preset)}
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div className="mt-4 flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={newPresetName}
-                      onChange={(e) => { }}
-                      placeholder="New preset name"
-                      className="border rounded px-2 py-1 flex-grow"
-                    />
-                    <button
-                      onClick={() => { }}
-                      className="inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      Save Preset
-                    </button>
                   </div>
                   <button
                     onClick={handleUpload}

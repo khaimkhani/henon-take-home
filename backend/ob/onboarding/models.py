@@ -7,7 +7,6 @@ class User(models.Model):
 
 
 class Header(models.Model):
-
     name1 = models.CharField(max_length=32)
     name2 = models.CharField(max_length=32)
     name3 = models.CharField(max_length=32)
