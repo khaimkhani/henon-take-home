@@ -12,11 +12,11 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000  # Run the Django development server
+    command: python manage.py runserver 0.0.0.0:8001  # Run the Django development server
     volumes:
       - .:/code  # Mount the current directory inside the container
     ports:
-      - "8000:8000"  # Expose the Django app on port 8000
+      - "8001:8001"  # Expose the Django app on port 8000
     depends_on:
       - db
     environment:
@@ -24,7 +24,7 @@ services:
       DB_USER: username
       DB_PASSWORD: password
       DB_HOST: db 
-      DB_PORT: 5432
+      DB_PORT: 5432 # Your processes might already be using 5432
 
 volumes:
   postgres_data:

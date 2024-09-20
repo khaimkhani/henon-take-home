@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
 from .models import Table, Row, Header, User
 from .serializers import TableSerializer, RowSerializer, HeaderSerializer
 
@@ -35,6 +36,8 @@ def upload_tables(request):
 
     user_id = request.headers.get("Authorization", None)
 
+    if not user_id:
+        return Response({"error": "No user associated with this ID"}, status=status.HTTP_400_BAD_REQUEST)
     tables = []
 
     # this includes all rows from the table
@@ -53,7 +56,7 @@ def upload_tables(request):
 
 @api_view(['GET'])
 def get_tables(request):
-    user_id = request.query_params.get("user_id", None)
+    user_id = request.headers.get("Authorization", None)
     pprint(request.headers)
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
@@ -62,11 +65,9 @@ def get_tables(request):
     return Response(TableSerializer(tables_qs, many=True).data)
 
 
-@ api_view(['GET'])
+@api_view(['GET'])
 def get_headers(request):
-
-    # get from middleware pls
-    user_id = request.query_params.get("user_id", None)
+    user_id = request.headers.get("Authorization", None)
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -78,12 +79,13 @@ def get_headers(request):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # should change this so that headers is not only dependant on tables
-    headers_qs = Header.objects.prefetch_related("header_tables").filter(header_tables__owner_id=user_id)
+    headers_qs = Header.objects.filter(owner_id=user_id)
 
     return Response(HeaderSerializer(headers_qs, many=True).data)
 
 @api_view(['POST'])
 def add_header(request):
+    user_id = request.headers.get("Authorization", None)
     name1 = request.data.get("name1", None)
     name2 = request.data.get("name2", None)
     name3 = request.data.get("name3", None)
@@ -100,18 +102,29 @@ def add_header(request):
                           type1=type1,
                           type2=type2,
                           type3=type3,
-                          type4=type4,)
+                          type4=type4,
+                          owner_id=user_id
+                          )
 
     # make nice message
     return Response()
 
-@ api_view(['GET'])
+@api_view(['GET'])
 def get_rows(request):
+    paginator = PageNumberPagination()
+    paginator.page_size = 30
+
     table_id = request.query_params.get("table_id", None)
     if not table_id:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
+    table = Table.objects.get(id=table_id)
     # check if owned by user
-    rows = Row.objects.select_related("table").filter(table_id=table_id)
+    # maybe add header to rows
+    rows = Row.objects.filter(table_id=table_id)
+    headers = Header.objects.prefetch_related("header_tables").filter(header_tables=table).values()
+    paginated = paginator.paginate_queryset(rows, request)
 
-    return Response(RowSerializer(rows, many=True).data)
+    return paginator.get_paginated_response({"rows": RowSerializer(paginated, many=True).data,
+                                             "headers": headers[0] if headers else None
+                                             })
