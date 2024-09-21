@@ -14,6 +14,12 @@ $ // or docker-compose up
 ```
 The server will run on localhost:8001 with the admin on http://localhost:8001/admin
 
+You can run migrations by doing the following:
+```
+$ docker exec -it ob-web-1 bash
+docker> python manage.py migrate  
+```
+
 ## Web
 ```
 $ cd frontend/obfe
