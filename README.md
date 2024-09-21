@@ -4,7 +4,7 @@
 This can be installed on any UNIX based machine or WSL within Windows.
 ## Server
 
-Ensure that postgres is not running locally:
+Ensure that postgres is not running locally on port 5432:
 ```
 $ sudo systemctl stop postgresql
 ```
