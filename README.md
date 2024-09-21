@@ -14,7 +14,7 @@ $ cd backend/ob
 $ docker compose up
 $ // or docker-compose up
 ```
-The server will run on localhost:8001
+The server will run on localhost:8001 with the admin on http://localhost:8001/admin
 
 ## Web
 ```
