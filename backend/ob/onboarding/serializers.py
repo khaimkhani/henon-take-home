@@ -9,7 +9,7 @@ class TableSerializer(serializers.ModelSerializer):
 class RowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Row
-        fields = ['col1', 'col2', 'col3', 'col4']
+        fields = ['id', 'col1', 'col2', 'col3', 'col4']
 
 class HeaderSerializer(serializers.ModelSerializer):
     col1 = serializers.SerializerMethodField()

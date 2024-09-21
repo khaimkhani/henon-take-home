@@ -62,7 +62,6 @@ def upload_tables(request):
     # this includes all rows from the table
     rows = []
     for file in files:
-        # TODO add header
         table = Table(name=file.name, file=file, header=header, owned_by_id=user_id)
         tables.append(table)
         for row in get_file_rows(file):
@@ -76,13 +75,27 @@ def upload_tables(request):
 @api_view(['GET'])
 def get_tables(request):
     user_id = request.headers.get("Authorization", None)
-    pprint(request.headers)
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
     tables_qs = Table.objects.filter(owned_by_id=user_id)
 
     return Response(TableSerializer(tables_qs, many=True).data)
 
+@api_view(['POST'])
+def remove_table(request):
+
+    return Response()
+
+    user_id = request.headers.get("Authorization", None)
+    if not user_id:
+        return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
+    table_id = request.data.get("table_id", None)
+    if not table_id:
+        return Response(data={"error": "No table attached to query"}, status=status.HTTP_400_BAD_REQUEST)
+
+    deleted = Table.objects.get(id=table_id, owned_by_id=user_id).delete()
+
+    return Response() if deleted else Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 def get_headers(request):
@@ -104,47 +117,82 @@ def add_header(request):
     except User.DoesNotExist:
         return Response({"error": "user does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
-    name1 = request.data.get("name1", None)
-    name2 = request.data.get("name2", None)
-    name3 = request.data.get("name3", None)
-    name4 = request.data.get("name4", None)
-    type1 = request.data.get("type1", None)
-    type2 = request.data.get("type2", None)
-    type3 = request.data.get("type3", None)
-    type4 = request.data.get("type4", None)
+    name1 = request.data[0].get("name", None)
+    type1 = request.data[0].get("type", None)
+    name2 = request.data[1].get("name", None)
+    type2 = request.data[1].get("type", None)
+    name3 = request.data[2].get("name", None)
+    type3 = request.data[2].get("type", None)
+    name4 = request.data[3].get("name", None)
+    type4 = request.data[3].get("type", None)
 
-    header, created = Header.objects.get_or_create(name1=name1,
-                                                   name2=name2,
-                                                   name3=name3,
-                                                   name4=name4,
-                                                   type1=type1,
-                                                   type2=type2,
-                                                   type3=type3,
-                                                   type4=type4,
-                                                   owner=user
-                                                   )
+    header, created = Header.objects.get_or_create(
+        name1=name1,
+        name2=name2,
+        name3=name3,
+        name4=name4,
+        type1=type1,
+        type2=type2,
+        type3=type3,
+        type4=type4,
+        owner=user
+    )
 
     # make nice message
     if not created:
         return Response({"data": "Header already exists"})
     return Response({"data": "Created header"})
 
+
+@api_view(['POST'])
+def remove_header(request):
+
+    user_id = request.headers.get("Authorization", None)
+    if not user_id:
+        return Response({"error": "No user associated with this ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+    name1 = request.data[0].get("name", None)
+    type1 = request.data[0].get("type", None)
+    name2 = request.data[1].get("name", None)
+    type2 = request.data[1].get("type", None)
+    name3 = request.data[2].get("name", None)
+    type3 = request.data[2].get("type", None)
+    name4 = request.data[3].get("name", None)
+    type4 = request.data[3].get("type", None)
+
+    deleted, _ = Header.objects.filter(
+        name1=name1,
+        name2=name2,
+        name3=name3,
+        name4=name4,
+        type1=type1,
+        type2=type2,
+        type3=type3,
+        type4=type4,
+        owner_id=user_id
+    ).delete()
+
+    return Response() if deleted else Response(status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 def get_rows(request):
-    paginator = PageNumberPagination()
-    paginator.page_size = 30
+    user_id = request.headers.get("Authorization", None)
+    if not user_id:
+        return Response({"error": "No user associated with this ID"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "user does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
     table_id = request.query_params.get("table_id", None)
     if not table_id:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    table = Table.objects.get(id=table_id)
-    # check if owned by user
-    # maybe add header to rows
+    table = Table.objects.get(id=table_id, owned_by=user)
     rows = Row.objects.filter(table_id=table_id)
     headers = Header.objects.prefetch_related("header_tables").filter(header_tables=table).values()
-    paginated = paginator.paginate_queryset(rows, request)
 
-    return paginator.get_paginated_response({"rows": RowSerializer(paginated, many=True).data,
-                                             "headers": headers[0] if headers else None
-                                             })
+    return Response({"rows": RowSerializer(rows, many=True).data,
+                     "headers": headers[0] if headers else None
+                     })

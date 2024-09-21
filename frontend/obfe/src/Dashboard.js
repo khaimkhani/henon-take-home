@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { withParams, BASE_URL } from './utils.js';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom'
+import { BASE_URL, checkEqual } from './utils.js';
 
 
 const HEADER_TYPES = {
-  string: "STRING",
-  int: "INT",
-  float: "FLOAT",
-  date: "DATE",
+  STRING: "STRING",
+  INT: "INT",
+  FLOAT: "FLOAT",
+  DATE: "DATE",
+  BOOL: "BOOL",
 }
+
+const BASE_COLUMNS = [
+  { name: '', type: HEADER_TYPES.string },
+  { name: '', type: HEADER_TYPES.string },
+  { name: '', type: HEADER_TYPES.string },
+  { name: '', type: HEADER_TYPES.string },
+]
 
 const getPresetName = (preset) => {
   let name = ''
@@ -22,44 +31,75 @@ const getPresetName = (preset) => {
   return name
 }
 
+const cleanPreset = (preset) => Object.entries(preset).map(([_, ps]) => { return { ...ps } })
+
 const DocumentDashboard = () => {
+
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [files, setFiles] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [userID, setUserID] = useState(localStorage.getItem('userID'))
 
-  const [columnSettings, setColumnSettings] = useState([
-    // prefill these when upload
-    // default should be string?
-    { name: '', type: HEADER_TYPES.string },
-    { name: '', type: HEADER_TYPES.string },
-    { name: '', type: HEADER_TYPES.string },
-    { name: '', type: HEADER_TYPES.string },
-  ])
+  const [columnSettings, setColumnSettings] = useState(BASE_COLUMNS)
 
-  const [selectedPreset, setSelectedPreset] = useState()
-  const [selectedPresetName, setSelectedPresetName] = useState()
 
   const tables = useQuery({ queryKey: ['tables'], enabled: !!userID })
   const headers = useQuery({ queryKey: ['headers'], enabled: !!userID })
 
   const uploadFiles = useMutation({
     mutationFn: async (formdata) => {
-
       const res = await fetch(`${BASE_URL}/api/upload_files/`, {
         method: 'POST', headers: { 'Authorization': userID }, body: formdata
       })
       if (res.ok) {
         throw new Error('Failed to send files for upload')
       }
-      return res.json()
-    },
-    // reset states
-    onSuccess: () => {
+      // side effects
       setFiles([])
       setIsUploadOpen(false)
-    }
+      return res.json()
+    },
   })
+
+  const removeTable = useMutation({ queryKey: 'remove_table' })
+
+  useEffect(() => {
+    if (uploadFiles.isSuccess) {
+      setFiles([])
+      setIsUploadOpen(false)
+      tables.refetch()
+    }
+
+  }, [uploadFiles])
+
+
+  const addHeader = useMutation({ queryKey: 'add_header' })
+  const removeHeader = useMutation({ queryKey: 'remove_header' })
+
+
+  const handleAddHeader = () => {
+    // just disable button
+    if (!columnSettings.every(item => !!item.name)) {
+      // set error state
+      return
+    }
+    addHeader.mutate({
+      endpoint: 'add_header', data: columnSettings, onSuccess: () => {
+        headers.refetch()
+      }
+    })
+  }
+
+  const handleDeleteHeader = (preset) => {
+    removeHeader.mutate({
+      endpoint: 'remove_header', data: cleanPreset(preset), onSuccess: () => {
+        setColumnSettings(BASE_COLUMNS.map(item => { return { ...item } }))
+        headers.refetch()
+      }
+    })
+  };
+
   const handleFileChange = (event) => {
     setFiles([...files, ...event.target.files]);
   };
@@ -68,7 +108,7 @@ const DocumentDashboard = () => {
     // headers validation
     // right now it only checks if they exist
     if (!columnSettings.every(item => !!item.name)) {
-      // set error state
+      // just disable upload
       return
     }
 
@@ -81,9 +121,10 @@ const DocumentDashboard = () => {
     uploadFiles.mutate(fd)
   };
 
+
   const handleDelete = (id) => {
-    // remove from files
-  };
+    removeTable.mutate({ endpoint: 'remove_table', data: { table_id: id } })
+  }
 
 
   const updateFileHeaderName = (val, colNum) => {
@@ -105,14 +146,11 @@ const DocumentDashboard = () => {
   }
 
   const handlePresetSelection = (preset) => {
-    setColumnSettings(Object.entries(preset).map(([_, ps]) => ps))
-    console.log(getPresetName(preset))
-    setSelectedPresetName(getPresetName(preset))
+    setColumnSettings(Array.from(cleanPreset(preset)))
   }
 
+  // Should ideally be cleaning this into a nice format with cleanPreset()
   const presets = headers?.data || []
-  console.log(selectedPresetName)
-
 
   return (
     <div className="container mx-auto p-4">
@@ -158,7 +196,18 @@ const DocumentDashboard = () => {
                     </div>
                   ))}
                   <div className="mt-4">
-                    <h4 className="font-medium mb-2">Column Settings:</h4>
+                    <div className="flex my-4 justify-between items-center">
+                      <h4 className="font-semibold mb-2">Column Mappings</h4>
+                      {presets?.some(ps => checkEqual(cleanPreset(ps), columnSettings))
+                        &&
+                        <button
+                          onClick={() => handleDeleteHeader(columnSettings)}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                          Delete Preset
+                        </button>
+                      }
+                    </div>
                     {Array(4).fill(0).map((_, idx) => (
                       <div key={idx} className="flex items-center space-x-2 mb-2">
                         <input
@@ -171,39 +220,62 @@ const DocumentDashboard = () => {
                         <select
                           // get from preset
                           value={columnSettings[idx].type}
-                          onChange={(e) => updateFileHeaderType(e.target.value, idx)}
+                          onChange={(e) => updateFileHeaderType(HEADER_TYPES[e.target.value], idx)}
                           placeholder={columnSettings[idx].type}
                           className="border rounded px-2 py-1"
                         >
-                          <option value="string">String</option>
-                          <option value="number">Number</option>
-                          <option value="date">Date</option>
+                          {Object.entries(HEADER_TYPES).map(([key, val]) => <option value={val}>{val}</option>)}
                         </select>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4">
-                    <select
-                      value={selectedPresetName ? selectedPresetName : ''}
-                      onChange={(e) => {
-                        handlePresetSelection(presets[e.target.value])
-                      }}
-                      className="border rounded px-2 py-1 w-full"
+                  {presets.length > 0 ?
+                    <div className="mt-4">
+                      <select
+                        value={''}
+                        onChange={(e) => {
+                          handlePresetSelection(presets[e.target.value])
+                        }}
+                        className="border rounded px-2 py-1 w-full"
+                      >
+                        <option value="">Select a preset</option>
+                        {presets.map((preset, index) => (
+                          <option key={index} value={index}>
+                            {getPresetName(preset)}
+                          </option>
+                        ))}
+                      </select>
+                    </div> :
+                    <div className="mt-4">
+                      <div className="rounded-md border-2 border-dashed border-yellow-400 py-8 m-8">
+                        <div className="flex items-center justify-center">
+                          <div className="flex-row items-stretch ml-3">
+                            <h3 className="text-sm font-medium text-gray-800">No preset headers found</h3>
+                            <div className="flex mt-2 text-sm text-gray-700">
+                              <p>Upload a file or add a header to view your presets</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  }
+                  <div className="flex items-end justify-center space-x-2">
+                    <button
+                      onClick={handleUpload}
+                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      <option value="">Select a preset</option>
-                      {presets.map((preset, index) => (
-                        <option key={index} value={index}>
-                          {getPresetName(preset)}
-                        </option>
-                      ))}
-                    </select>
+                      Upload Files
+                    </button>
+                    {!presets?.some(ps => checkEqual(cleanPreset(ps), columnSettings)) &&
+                      <button
+                        onClick={handleAddHeader}
+                        disabled={!columnSettings.every(item => !!item.name)}
+                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        + Add Preset
+                      </button>}
                   </div>
-                  <button
-                    onClick={handleUpload}
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Upload Files
-                  </button>
                 </div>
               )}
             </div>
@@ -212,7 +284,6 @@ const DocumentDashboard = () => {
       </div>
       <div className="bg-white shadow-md rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Uploaded Documents</h3>
           {tables.data?.length === 0 ? (
             <div className="rounded-md bg-yellow-50 py-8 m-4">
               <div className="flex items-center justify-center">
@@ -241,12 +312,20 @@ const DocumentDashboard = () => {
                       <p className="text-sm font-medium text-gray-900">{file.name}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(file.id)}
-                    className="ml-4 bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Delete
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => navigate(`/table/${file.id}`)}
+                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleDelete(file.id)}
+                      className="ml-4 bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -256,5 +335,7 @@ const DocumentDashboard = () => {
     </div>
   );
 };
+
+
 
 export default DocumentDashboard;

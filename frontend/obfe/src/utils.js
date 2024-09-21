@@ -29,7 +29,7 @@ export const defaultQueryFn = async (data) => {
   return res.json()
 }
 
-export const defaultMutationFn = async ({ endpoint, data, contentType = 'application/json' }) => {
+export const defaultMutationFn = async ({ endpoint, data, contentType = 'application/json', onSuccess = () => { }, onError = () => { } }) => {
   const stringify = contentType === 'application/json'
   const res = await fetch(`${BASE_URL}/api/${endpoint}/`, {
     method: 'POST', headers: {
@@ -40,8 +40,15 @@ export const defaultMutationFn = async ({ endpoint, data, contentType = 'applica
   })
 
   if (!res.ok) {
+    onError()
     throw new Error(`Request failed with status ${res.status}`)
   }
+  onSuccess()
   return res.json()
 
+}
+
+
+export const checkEqual = (obj1, obj2) => {
+  return JSON.stringify(obj1) === JSON.stringify(obj2)
 }
