@@ -1,10 +1,8 @@
-import logo from './logo.svg';
 import './App.css';
 import { Route, Routes } from 'react-router-dom';
 import {
   QueryClient,
   QueryClientProvider,
-  useQuery,
 } from '@tanstack/react-query';
 
 // custom imports
@@ -25,8 +23,6 @@ const queryClient = new QueryClient(
 )
 
 function App() {
-  // hit initial endpoints
-  // get user etc
   return (
     <QueryClientProvider client={queryClient}>
       <div className="App">

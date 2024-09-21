@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom'
-import { BASE_URL, checkEqual, cleanPreset } from './utils.js';
+import { checkEqual, cleanPreset } from './utils.js';
 
 
 const HEADER_TYPES = {
@@ -21,7 +21,7 @@ const BASE_COLUMNS = [
 
 const getPresetName = (preset) => {
   let name = ''
-  Object.entries(preset).forEach(([key, ps], idx) => {
+  Object.entries(preset).forEach(([_, ps], idx) => {
     if (idx < 3) {
       name += `${ps.name} (${ps.type}) - `
     } else {
@@ -73,20 +73,13 @@ const DocumentDashboard = () => {
   };
 
   const handleUpload = () => {
-    // headers validation
-    // right now it only checks if they exist
-    if (!columnSettings.every(item => !!item.name)) {
-      // just disable upload
-      return
-    }
-
     const fd = new FormData()
     files.forEach(file => fd.append('files[]', file))
     columnSettings.forEach(setting => {
       fd.append('colNames[]', setting.name)
       fd.append('colTypes[]', setting.type)
     })
-    let res = uploadFiles.mutate({
+    uploadFiles.mutate({
       endpoint: 'upload_files', data: fd, contentType: 'multipart/form-data', onSuccess: () => {
         setFiles([])
         setIsUploadOpen(false)
@@ -94,7 +87,6 @@ const DocumentDashboard = () => {
         tables.refetch()
       }
     })
-    console.log(res)
   };
 
 

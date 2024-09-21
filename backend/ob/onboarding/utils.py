@@ -2,7 +2,6 @@ import pandas as pd
 
 def get_file_rows(file):
     rows_df = []
-    # might want to check for this in view
     if file.name.endswith('.csv'):
         rows_df = pd.read_csv(file)
     elif file.name.endswith('.xlsx'):

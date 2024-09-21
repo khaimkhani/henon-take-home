@@ -1,16 +1,11 @@
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.pagination import PageNumberPagination
 
 from .models import Table, Row, Header, User
 from .serializers import TableSerializer, RowSerializer, HeaderSerializer
 
-from pprint import pprint
-
-# utils
 from .utils import get_file_rows
-import json
 
 
 @api_view(['POST'])
@@ -43,7 +38,6 @@ def upload_tables(request):
     col_names = request.POST.getlist("colNames[]")
     col_types = request.POST.getlist("colTypes[]")
 
-    print(files)
     if not files:
         return Response(data={"error": "No files sent"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -73,6 +67,7 @@ def upload_tables(request):
     Row.objects.bulk_create(rows)
     return Response()
 
+
 @api_view(['GET'])
 def get_tables(request):
     user_id = request.headers.get("Authorization", None)
@@ -81,6 +76,7 @@ def get_tables(request):
     tables_qs = Table.objects.filter(owned_by_id=user_id)
 
     return Response(TableSerializer(tables_qs, many=True).data)
+
 
 @api_view(['POST'])
 def remove_table(request):
@@ -95,6 +91,7 @@ def remove_table(request):
     deleted = Table.objects.get(id=table_id, owned_by_id=user_id).delete()
 
     return Response() if deleted else Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET'])
 def get_headers(request):
@@ -157,7 +154,6 @@ def add_header(request):
         owner=user
     )
 
-    # make nice message
     if not created:
         return Response({"data": "Header already exists"})
     return Response({"data": "Created header"})
