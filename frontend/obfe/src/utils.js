@@ -7,6 +7,8 @@ export const withParams = (queryKey, params) => {
   return endpoint
 }
 
+export const cleanPreset = (preset) => Object.entries(preset).map(([_, ps]) => { return { ...ps } })
+
 export const defaultQueryFn = async (data) => {
 
   const { queryKey } = data
@@ -30,13 +32,17 @@ export const defaultQueryFn = async (data) => {
 }
 
 export const defaultMutationFn = async ({ endpoint, data, contentType = 'application/json', onSuccess = () => { }, onError = () => { } }) => {
-  const stringify = contentType === 'application/json'
+
+  const isAppJson = contentType === 'application/json'
+  const headers = isAppJson ? {
+    'Content-Type': contentType,
+    'Authorization': localStorage.getItem('userID')
+  } : {
+    'Authorization': localStorage.getItem('userID')
+  }
   const res = await fetch(`${BASE_URL}/api/${endpoint}/`, {
-    method: 'POST', headers: {
-      'Content-Type': contentType,
-      'Authorization': localStorage.getItem('userID')
-    },
-    body: stringify ? JSON.stringify(data) : data
+    method: 'POST', headers: headers,
+    body: isAppJson ? JSON.stringify(data) : data
   })
 
   if (!res.ok) {

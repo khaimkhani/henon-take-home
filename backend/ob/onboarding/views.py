@@ -43,6 +43,7 @@ def upload_tables(request):
     col_names = request.POST.getlist("colNames[]")
     col_types = request.POST.getlist("colTypes[]")
 
+    print(files)
     if not files:
         return Response(data={"error": "No files sent"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -84,8 +85,6 @@ def get_tables(request):
 @api_view(['POST'])
 def remove_table(request):
 
-    return Response()
-
     user_id = request.headers.get("Authorization", None)
     if not user_id:
         return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
@@ -106,6 +105,26 @@ def get_headers(request):
     headers_qs = Header.objects.filter(owner_id=user_id)
 
     return Response(HeaderSerializer(headers_qs, many=True).data)
+
+
+@api_view(['GET'])
+def get_header_from_table_id(request):
+    user_id = request.headers.get("Authorization", None)
+    if not user_id:
+        return Response(data={"error": "No user attached to query"}, status=status.HTTP_400_BAD_REQUEST)
+
+    table_id = request.query_params.get("table_id", None)
+    if not table_id:
+        return Response(data={"error": "No table attached to query"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        table = Table.objects.only('header').get(id=table_id)
+    except Table.DoesNotExist:
+        return Response({"error": "Table not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header = table.header
+    return Response(HeaderSerializer(header).data)
+
 
 @api_view(['POST'])
 def add_header(request):

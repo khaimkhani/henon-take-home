@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom'
-import { BASE_URL, checkEqual } from './utils.js';
+import { BASE_URL, checkEqual, cleanPreset } from './utils.js';
 
 
 const HEADER_TYPES = {
@@ -13,10 +13,10 @@ const HEADER_TYPES = {
 }
 
 const BASE_COLUMNS = [
-  { name: '', type: HEADER_TYPES.string },
-  { name: '', type: HEADER_TYPES.string },
-  { name: '', type: HEADER_TYPES.string },
-  { name: '', type: HEADER_TYPES.string },
+  { name: '', type: HEADER_TYPES.STRING },
+  { name: '', type: HEADER_TYPES.STRING },
+  { name: '', type: HEADER_TYPES.STRING },
+  { name: '', type: HEADER_TYPES.STRING },
 ]
 
 const getPresetName = (preset) => {
@@ -31,11 +31,9 @@ const getPresetName = (preset) => {
   return name
 }
 
-const cleanPreset = (preset) => Object.entries(preset).map(([_, ps]) => { return { ...ps } })
 
 const DocumentDashboard = () => {
 
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [files, setFiles] = useState([]);
@@ -47,43 +45,13 @@ const DocumentDashboard = () => {
   const tables = useQuery({ queryKey: ['tables'], enabled: !!userID })
   const headers = useQuery({ queryKey: ['headers'], enabled: !!userID })
 
-  const uploadFiles = useMutation({
-    mutationFn: async (formdata) => {
-      const res = await fetch(`${BASE_URL}/api/upload_files/`, {
-        method: 'POST', headers: { 'Authorization': userID }, body: formdata
-      })
-      if (res.ok) {
-        throw new Error('Failed to send files for upload')
-      }
-      // side effects
-      setFiles([])
-      setIsUploadOpen(false)
-      return res.json()
-    },
-  })
-
+  const uploadFiles = useMutation({ queryKey: 'upload_files' })
   const removeTable = useMutation({ queryKey: 'remove_table' })
-
-  useEffect(() => {
-    if (uploadFiles.isSuccess) {
-      setFiles([])
-      setIsUploadOpen(false)
-      tables.refetch()
-    }
-
-  }, [uploadFiles])
-
-
   const addHeader = useMutation({ queryKey: 'add_header' })
   const removeHeader = useMutation({ queryKey: 'remove_header' })
 
 
   const handleAddHeader = () => {
-    // just disable button
-    if (!columnSettings.every(item => !!item.name)) {
-      // set error state
-      return
-    }
     addHeader.mutate({
       endpoint: 'add_header', data: columnSettings, onSuccess: () => {
         headers.refetch()
@@ -118,12 +86,20 @@ const DocumentDashboard = () => {
       fd.append('colNames[]', setting.name)
       fd.append('colTypes[]', setting.type)
     })
-    uploadFiles.mutate(fd)
+    let res = uploadFiles.mutate({
+      endpoint: 'upload_files', data: fd, contentType: 'multipart/form-data', onSuccess: () => {
+        setFiles([])
+        setIsUploadOpen(false)
+        headers.refetch()
+        tables.refetch()
+      }
+    })
+    console.log(res)
   };
 
 
   const handleDelete = (id) => {
-    removeTable.mutate({ endpoint: 'remove_table', data: { table_id: id } })
+    removeTable.mutate({ endpoint: 'remove_table', data: { table_id: id }, onSuccess: () => tables.refetch() })
   }
 
 
@@ -149,6 +125,7 @@ const DocumentDashboard = () => {
     setColumnSettings(Array.from(cleanPreset(preset)))
   }
 
+  const disableActions = !columnSettings.every(item => !!item.name)
   // Should ideally be cleaning this into a nice format with cleanPreset()
   const presets = headers?.data || []
 
@@ -182,22 +159,27 @@ const DocumentDashboard = () => {
               </div>
               {files.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Selected Files: {files.length}</h3>
+                  <div className="flex items-center justify-between my-4">
+                    <h3 className="font-semibold mb-2">Selected Files: {files.length}</h3>
+                    <button
+                      onClick={() => setFiles([])}
+                      className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yello-500"
+                    >
+                      Clear
+                    </button>
+                  </div>
                   {files.map((file, fileIndex) => (
-                    <div key={fileIndex} className="mb-4 border rounded-md p-4">
+                    <div key={fileIndex} className="mb-4 border rounded-md px-4 py-6">
                       <div className="flex items-center justify-between cursor-pointer">
                         <div className="flex items-center space-x-2" onClick={() => { }}>
                           <span>{file.name}</span>
                         </div>
-                        <button onClick={() => { }} className="text-red-500 hover:text-red-700">
-                          <p>X</p>
-                        </button>
                       </div>
                     </div>
                   ))}
                   <div className="mt-4">
                     <div className="flex my-4 justify-between items-center">
-                      <h4 className="font-semibold mb-2">Column Mappings</h4>
+                      <h4 className="font-semibold mb-2">Column Mapping *</h4>
                       {presets?.some(ps => checkEqual(cleanPreset(ps), columnSettings))
                         &&
                         <button
@@ -224,7 +206,7 @@ const DocumentDashboard = () => {
                           placeholder={columnSettings[idx].type}
                           className="border rounded px-2 py-1"
                         >
-                          {Object.entries(HEADER_TYPES).map(([key, val]) => <option value={val}>{val}</option>)}
+                          {Object.entries(HEADER_TYPES).map(([key, val], idx) => <option key={idx} value={val}>{val}</option>)}
                         </select>
                       </div>
                     ))}
@@ -263,15 +245,16 @@ const DocumentDashboard = () => {
                   <div className="flex items-end justify-center space-x-2">
                     <button
                       onClick={handleUpload}
-                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      disabled={disableActions}
+                      className={`mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${disableActions ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
                     >
                       Upload Files
                     </button>
                     {!presets?.some(ps => checkEqual(cleanPreset(ps), columnSettings)) &&
                       <button
                         onClick={handleAddHeader}
-                        disabled={!columnSettings.every(item => !!item.name)}
-                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        disabled={disableActions}
+                        className={`mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${disableActions ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
                       >
                         + Add Preset
                       </button>}
@@ -309,7 +292,7 @@ const DocumentDashboard = () => {
                       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                     </svg>
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                      <p className="text-sm font-semibold text-gray-900">{file.name}</p>
                     </div>
                   </div>
                   <div>
@@ -332,7 +315,7 @@ const DocumentDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
