@@ -10,24 +10,24 @@ $ sudo systemctl stop postgresql
 ```
 Run the docker server and database containers
 ```
-cd backend/ob
-docker compose up
-// or docker-compose up
+$ cd backend/ob
+$ docker compose up
+$ // or docker-compose up
 ```
 The server will run on localhost:8001
 
 ## Web
 ```
-cd frontend/obfe
+$ cd frontend/obfe
 ```
 Install dependencies
 ```
-npm install
+$ npm install
 ```
 Start web server
 ```
-npm start
+$ npm start
 ```
-The server will run on localhost:3000
+You can now go to http://localhost:3000 and use the application
 
 
