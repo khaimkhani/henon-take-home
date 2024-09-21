@@ -1,5 +1,3 @@
-## henon-take-home
-
 # Installation
 This can be installed on any UNIX based machine or WSL within Windows.
 ## Server
